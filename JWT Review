@@ -1,0 +1,103 @@
+ SECURITY ISSUE #1 — Missing Algorithm Declaration
+
+Current:
+
+jwt.sign(payload, secret, { expiresIn: "72h" })
+
+
+ Improve to:
+
+jwt.sign(payload, process.env.JWT_SECRET, {
+  expiresIn: "72h",
+  algorithm: "HS256"
+});
+
+Why?
+
+Prevents algorithm confusion attacks.
+
+SECURITY ISSUE #2 — No Ownership Check
+
+Currently ANY authenticated SME could generate token for ANY transaction.
+
+You fetch:
+
+.select("transaction_id, sme_id")
+
+But you never verify ownership.
+
+
+ADD THIS CHECK
+
+if (transaction.sme_id !== req.user.id) {
+  return res.status(403).json({ error: "Forbidden" });
+}
+
+This is VERY important.
+
+
+SECURITY ISSUE #3 — Confirmation Link Uses HTTP
+
+You generate:
+
+http://localhost:3000/confirm
+
+SHOULD BE
+
+https://yourdomain.com/confirm
+
+Tokens must NEVER travel over HTTP.
+
+ SECURITY ISSUE #4 — File Upload Validation Missing
+
+Current:
+
+upload.single("file")
+
+No file checks.
+
+Attackers could upload malware.
+
+
+ADD
+
+file size limit
+
+allowed MIME types
+
+Example:
+
+const upload = multer({
+ storage: multer.memoryStorage(),
+ limits: { fileSize: 5 * 1024 * 1024 },
+ fileFilter(req, file, cb) {
+   const allowed = ["application/pdf","image/jpeg","image/png"];
+   cb(null, allowed.includes(file.mimetype));
+ }
+});
+
+
+SECURITY ISSUE #5 — Service Role Key Risk
+
+You use: SUPABASE_SERVICE_ROLE_KEY
+
+This key bypasses RLS.
+
+Meaning:  backend has full database power.
+
+This is acceptable ONLY if:
+
+never exposed to frontend
+
+stored in environment variables
+You should confirm that.
+
+PART 3 — Authentication Middleware Review
+
+This is GOOD:
+
+supabase.auth.getUser(token)
+
+You are verifying Supabase session token.
+
+Correct approach.
